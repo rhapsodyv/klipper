@@ -120,20 +120,23 @@ pollreactor_check_timers(struct pollreactor *pr, double eventtime, int busy)
     if (busy)
         return 0;
     // Calculate sleep duration
-    double timeout = ceil((pr->next_timer - eventtime) * 1000.);
-    return timeout < 1. ? 1 : (timeout > 1000. ? 1000 : (int)timeout);
+    double timeout = pr->next_timer - eventtime;
+    return timeout < 0.001 ? 0.001 : (timeout > 1 ? 1 : timeout);
 }
 
 // Repeatedly check for timer and fd events and invoke their callbacks
 void
 pollreactor_run(struct pollreactor *pr)
 {
+    struct timespec tmo_p = {0};
+    tmo_p.tv_sec = 0;
     double eventtime = get_monotonic();
     int busy = 1;
     while (! pr->must_exit) {
         int timeout = pollreactor_check_timers(pr, eventtime, busy);
         busy = 0;
-        int ret = poll(pr->fds, pr->num_fds, timeout);
+        tmo_p.tv_nsec = timeout * 1000000.0;
+        int ret = ppoll(pr->fds, pr->num_fds, &tmo_p, NULL);
         eventtime = get_monotonic();
         if (ret > 0) {
             busy = 1;
