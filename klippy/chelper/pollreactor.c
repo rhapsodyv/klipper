@@ -18,7 +18,7 @@ struct pollreactor_timer {
 };
 
 struct pollreactor {
-    int num_fds, num_timers, must_exit;
+    int num_fds, num_timers, must_exit, max_sleep_time;
     void *callback_data;
     double next_timer;
     struct pollfd *fds;
@@ -28,10 +28,11 @@ struct pollreactor {
 
 // Allocate a new 'struct pollreactor' object
 struct pollreactor *
-pollreactor_alloc(int num_fds, int num_timers, void *callback_data)
+pollreactor_alloc(int num_fds, int num_timers, void *callback_data, int max_sleep_time)
 {
     struct pollreactor *pr = malloc(sizeof(*pr));
     memset(pr, 0, sizeof(*pr));
+    pr->max_sleep_time = max_sleep_time;
     pr->num_fds = num_fds;
     pr->num_timers = num_timers;
     pr->must_exit = 0;
@@ -133,7 +134,7 @@ pollreactor_run(struct pollreactor *pr)
     while (! pr->must_exit) {
         int timeout = pollreactor_check_timers(pr, eventtime, busy);
         busy = 0;
-        int ret = poll(pr->fds, pr->num_fds, timeout);
+        int ret = poll(pr->fds, pr->num_fds, timeout > pr->max_sleep_time ? pr->max_sleep_time : timeout);
         eventtime = get_monotonic();
         if (ret > 0) {
             busy = 1;

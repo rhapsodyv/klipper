@@ -5,7 +5,7 @@
 #define PR_NEVER 9999999999999999.
 
 struct pollreactor *pollreactor_alloc(int num_fds, int num_timers
-                                      , void *callback_data);
+                                      , void *callback_data, int max_sleep_time);
 void pollreactor_free(struct pollreactor *pr);
 void pollreactor_add_fd(struct pollreactor *pr, int pos, int fd, void *callback
                         , int write_only);
