@@ -50,6 +50,8 @@ canserial_notify_tx(void)
     sched_wake_task(&CanData.tx_wake);
 }
 
+static uint32_t last_ping = 0;
+
 void
 canserial_tx_task(void)
 {
@@ -65,8 +67,16 @@ canserial_tx_task(void)
     uint32_t tpos = CanData.transmit_pos, tmax = CanData.transmit_max;
     for (;;) {
         int avail = tmax - tpos, now = avail > 8 ? 8 : avail;
-        if (avail <= 0)
+        if (avail <= 0) {
+            uint32_t now = timer_read_time();
+            //only if we have sent something or 2ms passed since last ping
+            if (tpos > CanData.transmit_pos || (now - last_ping) > timer_from_us(2000)) {
+                last_ping = now;
+                msg.dlc = 0;
+                canbus_send(&msg);
+            }
             break;
+        }
         msg.dlc = now;
         memcpy(msg.data, &CanData.transmit_buf[tpos], now);
         int ret = canbus_send(&msg);
